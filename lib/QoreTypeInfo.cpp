@@ -782,7 +782,7 @@ bool QoreTypeSpec::acceptInput(ExceptionSink* xsink, const QoreTypeInfo& typeInf
                 while (i.next()) {
                     hash_assignment_priv ha(*qore_hash_private::get(*h), *qhi_priv::get(i)->i);
                     QoreValue hn(ha.swap(QoreValue()));
-                    u.ti->acceptInputIntern(xsink, obj, param_num, param_name, hn);
+                    u.ti->acceptInputIntern(xsink, obj, param_num, param_name, hn, lvhelper);
                     ha.swap(hn);
                     if (*xsink)
                         return true;
@@ -825,7 +825,7 @@ bool QoreTypeSpec::acceptInput(ExceptionSink* xsink, const QoreTypeInfo& typeInf
                 // now we have to fold the value types into our type
                 for (size_t i = 0; i < l->size(); ++i) {
                     QoreValue ln(lp->takeExists(i));
-                    u.ti->acceptInputIntern(xsink, obj, param_num, param_name, ln);
+                    u.ti->acceptInputIntern(xsink, obj, param_num, param_name, ln, lvhelper);
                     lp->swap(i, ln.takeNode());
                     if (*xsink)
                         return true;
@@ -843,6 +843,8 @@ bool QoreTypeSpec::acceptInput(ExceptionSink* xsink, const QoreTypeInfo& typeInf
         }
         case QTS_COMPLEXREF: {
             if (n.getType() == NT_REFERENCE) {
+                // issue #2889 cannot assign a reference while assigning an lvalue and holding a write lock
+                assert(!lvhelper);
                 ReferenceNode* r = n.get<ReferenceNode>();
                 const QoreTypeInfo* ti = r->getLValueTypeInfo();
                 //printd(5, "cr: %p '%s' == %p '%s': %d\n", u.ti, QoreTypeInfo::getName(u.ti), ti, QoreTypeInfo::getName(ti), QoreTypeInfo::isOutputSubset(u.ti, ti));
